@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, simpledialog
+from tkinter import ttk, simpledialog, filedialog, messagebox
 import random
 import json
 import os
@@ -8,8 +8,9 @@ import math
 class DiceRollerApp:
     def __init__(self, root):
         self.root = root
+        super(DiceRollerApp, self).__init__()
         self.root.title("DS TTRPG Helper")
-        
+
         # Set window size and icon
         self.root.geometry("520x560")
         self.root.iconbitmap("icon.ico")  # Add your app icon here
@@ -21,9 +22,18 @@ class DiceRollerApp:
         main_frame = tk.Frame(self.root, bg="white")
         main_frame.pack(fill="both", expand=True)
 
-        # Add "New Roller" button
-        new_roller_button = tk.Button(main_frame, text="New Roller", command=self.add_roller_tab, bg="#470701", fg="white", borderwidth=0)
-        new_roller_button.pack(pady=10, side=tk.TOP, anchor=tk.W)
+        # Add buttons for new roller, load, and save
+        button_frame = tk.Frame(main_frame, bg="white")
+        button_frame.pack(pady=10, side=tk.TOP, anchor=tk.W)
+
+        new_roller_button = tk.Button(button_frame, text="New Roller", command=self.add_roller_tab, bg="#470701", fg="white", borderwidth=0)
+        new_roller_button.pack(side=tk.LEFT, padx=5)
+
+        load_button = tk.Button(button_frame, text="Load", command=self.load_save, bg="#470701", fg="white", borderwidth=0)
+        load_button.pack(side=tk.LEFT, padx=5)
+
+        save_button = tk.Button(button_frame, text="Save", command=self.save_current_tab, bg="#470701", fg="white", borderwidth=0)
+        save_button.pack(side=tk.LEFT, padx=5)
 
         # Set up notebook for tabs
         self.notebook = ttk.Notebook(main_frame)
@@ -48,7 +58,7 @@ class DiceRollerApp:
         self.notes_text.pack(pady=10, fill="both", expand=True)
 
         # Add initial roller tab
-        self.add_roller_tab()
+        #self.add_roller_tab()
 
         # Handle app close event to save inputs
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -63,7 +73,7 @@ class DiceRollerApp:
         # Name entry field
         name_label = tk.Label(tab_frame, text="Name:", bg="white", fg="#470701")
         name_label.grid(row=0, column=0, padx=10, pady=5)
-        name_entry = tk.Entry(tab_frame, textvariable=tab_name)
+        name_entry = tk.Entry(tab_frame, textvariable=tab_name, name="name")
         name_entry.grid(row=0, column=1, padx=10, pady=5)
 
         # Input fields and roll buttons
@@ -100,7 +110,12 @@ class DiceRollerApp:
         self.notebook.select(tab_frame)
 
         # Bind name entry field update to load data
-        name_entry.bind("<FocusOut>", lambda event: self.update_tab_name(tab_frame, tab_name.get(), entries, output_text))
+        name_entry.bind("<FocusOut>", lambda event: self.update_tab_name(tab_frame, tab_name.get()))
+
+    def update_tab_name(self, tab_frame, new_name):
+        # Update tab name
+        index = self.notebook.index(tab_frame)
+        self.notebook.tab(tab_frame, text=new_name)
 
     def create_tooltip_text(self, value):
         # Calculate tooltip text
@@ -112,19 +127,6 @@ class DiceRollerApp:
             "1/20": max(math.floor(value / 20), 1)
         }
         return "\n".join(f"{k}: {v}" for k, v in values.items())
-
-    def update_tab_name(self, tab_frame, new_name, entries, output_text):
-        # Update tab name
-        index = self.notebook.index(tab_frame)
-        self.notebook.tab(tab_frame, text=new_name)
-
-        # Save current tab data if needed
-        old_name = self.notebook.tab(tab_frame, "text")
-        if old_name and old_name != new_name:
-            self.save_data_for_tab(old_name, entries)
-
-        # Load data for new tab name
-        self.load_data_for_tab(new_name, entries, output_text)
 
     def roll_dice(self, attribute, entries, tab_name):
         try:
@@ -158,8 +160,7 @@ class DiceRollerApp:
 
         output_text.insert(tk.END, result_str + "\n")
 
-        success = self.ask_success_fail()
-        log_entry = f"Tab: {self.notebook.tab(self.notebook.select(), 'text')} | {attribute} | Rolls: {results} | {'Success' if success else 'Failure'}"
+        log_entry = f"Tab: {self.notebook.tab(self.notebook.select(), 'text')} | {attribute} | Rolls: {results} | {'Add Success or Fail Here'}"
         self.logs.append(log_entry)
 
         # Update log tab
@@ -175,10 +176,70 @@ class DiceRollerApp:
                     entries[attribute] = child
         return entries
 
+    def load_save(self):
+        # Ensure the parent window is correctly referenced
+        if not hasattr(self, 'root'):
+            raise AttributeError("The application instance must have a 'root' attribute referencing the Tk window.")
+
+        # Create a new window for file selection
+        selection_window = tk.Toplevel(self.root)  # Use self.root or the correct attribute referencing your main window
+        selection_window.title("Load Save")
+
+        # Label for the dropdown
+        label = tk.Label(selection_window, text="Select a save file:")
+        label.pack(pady=5)
+
+        # Create a dropdown (Combobox)
+        save_files = [f for f in os.listdir('.') if f.endswith('.json')]
+        if not save_files:
+            messagebox.showinfo("Load Save", "No save files found.")
+            selection_window.destroy()
+            return
+
+        combobox = ttk.Combobox(selection_window, values=save_files)
+        combobox.pack(pady=5)
+        combobox.set("Select a file")
+
+        # Function to load the selected file
+        def confirm_selection():
+            selected_file = combobox.get()
+            if selected_file and selected_file in save_files:
+                tab_name = selected_file.replace('.json', '')
+                self.add_roller_tab()
+                new_tab = self.notebook.nametowidget(self.notebook.select())
+                entries = self.get_entries_from_frame(new_tab)
+                output_text = [widget for widget in new_tab.winfo_children() if isinstance(widget, tk.Text)][0]
+                self.load_data_for_tab(tab_name, entries, output_text)
+                selection_window.destroy()
+            else:
+                messagebox.showwarning("Load Save", "Please select a valid save file.")
+
+        # Button to confirm selection
+        confirm_button = tk.Button(selection_window, text="Load", command=confirm_selection)
+        confirm_button.pack(pady=5)
+
+        # Make the window modal
+        selection_window.transient(self.root)  # Use self.root for modality
+        selection_window.grab_set()
+         # Wait for the window to be closed before proceeding
+        selection_window.wait_window()  # Call wait_window on the selection_window, not self
+
+    def save_current_tab(self):
+        tab = self.notebook.select()
+        tab_frame = self.notebook.nametowidget(tab)
+        tab_name = self.notebook.tab(tab_frame, "text")
+        entries = self.get_entries_from_frame(tab_frame)
+        self.save_data_for_tab(tab_name, entries)
+
     def load_data_for_tab(self, tab_name, entries, output_text):
         filename = f"{tab_name}.json"
         if os.path.exists(filename):
             with open(filename, "r") as file:
+                tab = self.notebook.select()
+                tab_frame = self.notebook.nametowidget(tab)
+                self.update_tab_name(tab_frame, tab_name)
+                tab_frame.nametowidget("name").delete(0, tk.END)
+                tab_frame.nametowidget("name").insert(0, tab_name)
                 data = json.load(file)
                 for attribute, value in data.items():
                     if attribute in entries:
@@ -192,79 +253,49 @@ class DiceRollerApp:
         with open(filename, "w") as file:
             json.dump(data, file)
 
-    def ask_success_fail(self):
-        # Create a dialog box with Yes and No buttons
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Success or Failure")
-
-        # Center the dialog relative to the main window
-        dialog_width, dialog_height = 200, 100  # Set dimensions for the dialog
-        main_window_x = self.root.winfo_x()
-        main_window_y = self.root.winfo_y()
-        main_window_width = self.root.winfo_width()
-        main_window_height = self.root.winfo_height()
-
-        # Calculate position
-        dialog_x = main_window_x + (main_window_width // 2) - (dialog_width // 2)
-        dialog_y = main_window_y + (main_window_height // 2) - (dialog_height // 2)
-
-        dialog.geometry(f"{dialog_width}x{dialog_height}+{dialog_x}+{dialog_y}")
-
-        label = tk.Label(dialog, text="Did it succeed?", bg="white", fg="#470701")
-        label.pack(pady=10)
-
-        success = tk.BooleanVar(value=False)
-
-        yes_button = tk.Button(dialog, text="Yes", command=lambda: [success.set(True), dialog.destroy()], bg="#470701", fg="white", borderwidth=0)
-        yes_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        no_button = tk.Button(dialog, text="No", command=lambda: [success.set(False), dialog.destroy()], bg="#470701", fg="white", borderwidth=0)
-        no_button.pack(side=tk.RIGHT, padx=10, pady=10)
-
-        # Wait for the dialog to close
-        dialog.grab_set()
-        dialog.wait_window()
-
-        # Return True if Yes was clicked, otherwise False
-        return success.get()
-
     def update_log(self):
         self.log_text.delete(1.0, tk.END)
-        for log in self.logs:
-            self.log_text.insert(tk.END, log + "\n")
+        self.log_text.insert(tk.END, "\n".join(self.logs))
 
     def on_closing(self):
-        # Save data for all tabs
-        for tab in self.notebook.tabs():
-            tab_frame = self.notebook.nametowidget(tab)
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.save_all_tabs()
+            self.root.destroy()
+
+    def save_all_tabs(self):
+        for tab_id in self.notebook.tabs():
+            tab_frame = self.notebook.nametowidget(tab_id)
             tab_name = self.notebook.tab(tab_frame, "text")
-            entries = self.get_entries_from_frame(tab_frame)
-            self.save_data_for_tab(tab_name, entries)
-        self.root.destroy()
+            if tab_name != "Log" and tab_name != "Notes":
+                entries = self.get_entries_from_frame(tab_frame)
+                self.save_data_for_tab(tab_name, entries)
 
 class Tooltip:
-    def __init__(self, widget, text_func):
+    def __init__(self, widget, text_function):
         self.widget = widget
-        self.text_func = text_func
-        self.tooltip = None
+        self.text_function = text_function
+        self.tooltip_window = None
         self.widget.bind("<Enter>", self.show_tooltip)
         self.widget.bind("<Leave>", self.hide_tooltip)
 
     def show_tooltip(self, event):
-        x, y, _, _ = self.widget.bbox("insert")
-        x += self.widget.winfo_rootx() + 25
-        y += self.widget.winfo_rooty() + 25
+        if self.tooltip_window:
+            return
 
-        self.tooltip = tk.Toplevel(self.widget)
-        self.tooltip.wm_overrideredirect(True)
-        self.tooltip.wm_geometry(f"+{x}+{y}")
-        label = tk.Label(self.tooltip, text=self.text_func(), background="white", relief="solid", borderwidth=1)
-        label.pack()
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tooltip_window = tk.Toplevel(self.widget)
+        self.tooltip_window.wm_overrideredirect(True)
+        self.tooltip_window.geometry(f"+{x}+{y}")
+        self.tooltip_window.config(bg="white")
+
+        tooltip_label = tk.Label(self.tooltip_window, text=self.text_function(), bg="white", fg="#470701", justify="left", relief="solid", borderwidth=1)
+        tooltip_label.pack()
 
     def hide_tooltip(self, event):
-        if self.tooltip:
-            self.tooltip.destroy()
-            self.tooltip = None
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+            self.tooltip_window = None
 
 if __name__ == "__main__":
     root = tk.Tk()
