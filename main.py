@@ -4,8 +4,13 @@ import random
 import json
 import os
 import math
+import sys
+
+if sys.platform == "win32":
+    import winaccent
 
 class DiceRollerApp:
+    
     def __init__(self, root):
         self.root = root
         super(DiceRollerApp, self).__init__()
@@ -18,76 +23,85 @@ class DiceRollerApp:
         # Define attributes
         self.attributes = ["Strength", "Technique", "Constitution", "Resolve", "Instinct", "Celerity"]
 
+        self.background_color = "#2E2E2E"
+        self.background_variation_color = "#525252"
+
         # Create main frame
-        main_frame = tk.Frame(self.root, bg="white")
+        main_frame = tk.Frame(self.root, bg=self.background_color)
         main_frame.pack(fill="both", expand=True)
 
         # Add buttons for new roller, load, and save
-        button_frame = tk.Frame(main_frame, bg="white")
+        button_frame = tk.Frame(main_frame, bg=self.background_color)
         button_frame.pack(pady=10, side=tk.TOP, anchor=tk.W)
 
-        new_roller_button = tk.Button(button_frame, text="New Roller", command=self.add_roller_tab, bg="#470701", fg="white", borderwidth=0)
+        new_roller_button = tk.Button(button_frame, text="New Roller", command=self.add_roller_tab, bg=self.background_variation_color, fg="white", borderwidth=0)
         new_roller_button.pack(side=tk.LEFT, padx=5)
 
-        load_button = tk.Button(button_frame, text="Load", command=self.load_save, bg="#470701", fg="white", borderwidth=0)
+        load_button = tk.Button(button_frame, text="Load", command=self.load_save, bg=self.background_variation_color, fg="white", borderwidth=0)
         load_button.pack(side=tk.LEFT, padx=5)
 
-        save_button = tk.Button(button_frame, text="Save", command=self.save_current_tab, bg="#470701", fg="white", borderwidth=0)
+        save_button = tk.Button(button_frame, text="Save", command=self.save_current_tab, bg=self.background_variation_color, fg="white", borderwidth=0)
         save_button.pack(side=tk.LEFT, padx=5)
+
+        close_tab_button = tk.Button(button_frame, text="Close Roller", command=self.close_current_tab, bg=self.background_variation_color, fg="white", borderwidth=0)
+        close_tab_button.pack(side=tk.LEFT, padx=5)
+
+        noteStyle = ttk.Style()
+        noteStyle.theme_use('default')
+        noteStyle.configure("TNotebook", background=self.background_color, borderwidth=0)
+        noteStyle.configure("TNotebook.Tab", background=self.background_variation_color, borderwidth=0)
+        noteStyle.map("TNotebook", background=[("selected", self.background_variation_color)])
 
         # Set up notebook for tabs
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.pack(pady=10, expand=True, fill="both")
 
         # Log frame
-        self.log_frame = tk.Frame(self.notebook, bg="white")
+        self.log_frame = tk.Frame(self.notebook, bg=self.background_variation_color)
         self.notebook.add(self.log_frame, text="Log")
 
         self.logs = []
 
         # Log display
-        self.log_text = tk.Text(self.log_frame, height=20, width=60, bg="white", fg="black", borderwidth=0)
+        self.log_text = tk.Text(self.log_frame, height=20, width=60, bg=self.background_color, fg="white", borderwidth=0)
         self.log_text.pack(pady=10, fill="both", expand=True)
 
         # Notes frame
-        self.notes_frame = tk.Frame(self.notebook, bg="white")
+        self.notes_frame = tk.Frame(self.notebook, bg=self.background_variation_color)
         self.notebook.add(self.notes_frame, text="Notes")
 
         # Notes display
-        self.notes_text = tk.Text(self.notes_frame, height=20, width=60, bg="white", fg="black", borderwidth=0)
+        self.notes_text = tk.Text(self.notes_frame, height=20, width=60, bg=self.background_color, fg="white", borderwidth=0)
         self.notes_text.pack(pady=10, fill="both", expand=True)
-
-        # Add initial roller tab
-        #self.add_roller_tab()
 
         # Handle app close event to save inputs
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def add_roller_tab(self):
-        tab_frame = tk.Frame(self.notebook, bg="white")
+        tab_frame = tk.Frame(self.notebook, bg=self.background_variation_color)
         tab_frame.pack(fill="both", expand=True)
 
         # Default tab name
         tab_name = tk.StringVar(value="Roller")
         
         # Name entry field
-        name_label = tk.Label(tab_frame, text="Name:", bg="white", fg="#470701")
+        name_label = tk.Label(tab_frame, text="Name:", bg=self.background_color, fg="white")
         name_label.grid(row=0, column=0, padx=10, pady=5)
-        name_entry = tk.Entry(tab_frame, textvariable=tab_name, name="name")
+        name_entry = tk.Entry(tab_frame, textvariable=tab_name, name="name", bg=self.background_color, fg="white")
         name_entry.grid(row=0, column=1, padx=10, pady=5)
 
         # Input fields and roll buttons
         entries = {}
 
         for i, attribute in enumerate(self.attributes):
-            label = tk.Label(tab_frame, text=attribute, bg="white", fg="#470701")
+            label = tk.Label(tab_frame, text=attribute, bg=self.background_color, fg="white")
             label.grid(row=i+1, column=0, padx=10, pady=5)
 
-            entry = tk.Entry(tab_frame)
+            entry = tk.Entry(tab_frame, bg=self.background_color, fg="white")
             entry.grid(row=i+1, column=1, padx=10, pady=5)
             entries[attribute] = entry
 
-            roll_button = tk.Button(tab_frame, text="Roll", command=lambda attr=attribute: self.roll_dice(attr, entries, tab_name.get()), bg="#470701", fg="white", borderwidth=0)
+            roll_button = tk.Button(tab_frame, text="Roll", command=lambda attr=attribute: self.roll_dice(attr, entries, tab_name.get()), bg=self.background_color, fg="white", borderwidth=0)
             roll_button.grid(row=i+1, column=2, padx=10, pady=5)
 
             # Tooltip setup for the label
@@ -98,7 +112,7 @@ class DiceRollerApp:
                     value = 0
                 return self.create_tooltip_text(value)
 
-            Tooltip(label, get_tooltip_text)
+            Tooltip(label, get_tooltip_text, self.background_color, self.background_variation_color)
 
         # Output text box
         output_text = tk.Text(tab_frame, height=10, width=50, bg="white", fg="black", borderwidth=0)
@@ -184,6 +198,7 @@ class DiceRollerApp:
         # Create a new window for file selection
         selection_window = tk.Toplevel(self.root)  # Use self.root or the correct attribute referencing your main window
         selection_window.title("Load Save")
+        selection_window.geometry("300x150")
 
         # Label for the dropdown
         label = tk.Label(selection_window, text="Select a save file:")
@@ -221,6 +236,11 @@ class DiceRollerApp:
         # Make the window modal
         selection_window.transient(self.root)  # Use self.root for modality
         selection_window.grab_set()
+        root_x = root.winfo_rootx()
+        root_y = root.winfo_rooty()
+        win_x = root_x + 100
+        win_y = root_y + 150
+        selection_window.geometry(f'+{win_x}+{win_y}')
          # Wait for the window to be closed before proceeding
         selection_window.wait_window()  # Call wait_window on the selection_window, not self
 
@@ -230,6 +250,16 @@ class DiceRollerApp:
         tab_name = self.notebook.tab(tab_frame, "text")
         entries = self.get_entries_from_frame(tab_frame)
         self.save_data_for_tab(tab_name, entries)
+
+    def close_current_tab(self):
+        self.save_current_tab()
+        tab = self.notebook.select()
+        tab_frame = self.notebook.nametowidget(tab)
+        tab_name = self.notebook.tab(tab_frame, "text")
+        for item in self.notebook.winfo_children():
+            if str(item) == (tab) and tab_name != "Log" and tab_name != "Notes":
+                item.destroy()
+                return  #Necessary to break or for loop can destroy all the tabs when first tab is deleted
 
     def load_data_for_tab(self, tab_name, entries, output_text):
         filename = f"{tab_name}.json"
@@ -271,8 +301,10 @@ class DiceRollerApp:
                 self.save_data_for_tab(tab_name, entries)
 
 class Tooltip:
-    def __init__(self, widget, text_function):
+    def __init__(self, widget, text_function, background_color, background_color_variation):
         self.widget = widget
+        self.background_color = background_color
+        self.background_color_variation = background_color_variation
         self.text_function = text_function
         self.tooltip_window = None
         self.widget.bind("<Enter>", self.show_tooltip)
@@ -287,9 +319,9 @@ class Tooltip:
         self.tooltip_window = tk.Toplevel(self.widget)
         self.tooltip_window.wm_overrideredirect(True)
         self.tooltip_window.geometry(f"+{x}+{y}")
-        self.tooltip_window.config(bg="white")
+        self.tooltip_window.config(bg=self.background_color)
 
-        tooltip_label = tk.Label(self.tooltip_window, text=self.text_function(), bg="white", fg="#470701", justify="left", relief="solid", borderwidth=1)
+        tooltip_label = tk.Label(self.tooltip_window, text=self.text_function(), bg=self.background_color, fg="white", justify="left", relief="solid", borderwidth=1)
         tooltip_label.pack()
 
     def hide_tooltip(self, event):
