@@ -21,7 +21,7 @@ class DiceRollerApp:
         self.root.iconbitmap("icon.ico")  # Add your app icon here
 
         # Define attributes
-        self.attributes = ["Strength", "Technique", "Constitution", "Resolve", "Instinct", "Celerity"]
+        self.attributes = ["Strength", "Technique", "Constitution", "Charisma", "Instinct", "Celerity"]
 
         self.background_color = "#2E2E2E"
         self.background_variation_color = "#525252"
@@ -159,7 +159,7 @@ class DiceRollerApp:
 
         output_text.delete(1.0, tk.END)
 
-        num_rolls = simpledialog.askinteger("Input", f"How many rolls for {attribute}?")
+        num_rolls = simpledialog.askinteger("Input", f"How many rolls for {attribute}?", parent=self.root)
         if not num_rolls:
             return
 
@@ -174,8 +174,7 @@ class DiceRollerApp:
 
         output_text.insert(tk.END, result_str + "\n")
 
-        log_entry = f"Tab: {self.notebook.tab(self.notebook.select(), 'text')} | {attribute} | Rolls: {results} | {'Add Success or Fail Here'}"
-        self.logs.append(log_entry)
+        self.logs.append(result_str)
 
         # Update log tab
         self.update_log()
@@ -288,7 +287,7 @@ class DiceRollerApp:
         self.log_text.insert(tk.END, "\n".join(self.logs))
 
     def on_closing(self):
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+        if messagebox.askokcancel("Quit", "Do you want to quit?", parent = self.root):
             self.save_all_tabs()
             self.root.destroy()
 
