@@ -17,7 +17,7 @@ class DiceRollerApp:
         self.root.title("DS TTRPG Helper")
 
         # Set window size and icon
-        self.root.geometry("520x560")
+        self.root.geometry("520x580")
         self.root.iconbitmap("icon.ico")  # Add your app icon here
 
         # Define attributes
@@ -25,6 +25,7 @@ class DiceRollerApp:
 
         self.background_color = "#2E2E2E"
         self.background_variation_color = "#525252"
+        self.special_color = "#500000"
 
         # Create main frame
         main_frame = tk.Frame(self.root, bg=self.background_color)
@@ -83,26 +84,48 @@ class DiceRollerApp:
 
         # Default tab name
         tab_name = tk.StringVar(value="Roller")
+
+        tk.Label(tab_frame, text="Base HP:", bg=self.background_color, fg="white").grid(row=0, column=0, padx=10, pady=5)
+        self.base_hp_var = tk.StringVar()
+        tk.Entry(tab_frame, textvariable=self.base_hp_var, state="disabled", bg=self.background_color, fg="white").grid(row=0, column=1, padx=10, pady=5)
+
+        tk.Label(tab_frame, text="Additional HP:", bg=self.background_color, fg="white").grid(row=1, column=0, padx=10, pady=5)
+        self.add_hp_var = tk.StringVar(value="0")
+        tk.Entry(tab_frame, textvariable=self.add_hp_var, bg=self.background_color, fg="white").grid(row=1, column=1, padx=10, pady=5)
+
+        tk.Label(tab_frame, text="Current HP:", bg=self.background_color, fg="white").grid(row=2, column=0, padx=10, pady=5)
+        self.current_hp_var = tk.StringVar(value="0")
+        tk.Entry(tab_frame, textvariable=self.current_hp_var, bg=self.background_color, fg="white").grid(row=2, column=1, padx=10, pady=5)
+
+        tk.Button(tab_frame, text="Take Damage", command=self.take_damage, bg=self.special_color, fg="white", borderwidth=0).grid(row=2, column=2, padx=10, pady=5)
         
         # Name entry field
         name_label = tk.Label(tab_frame, text="Name:", bg=self.background_color, fg="white")
-        name_label.grid(row=0, column=0, padx=10, pady=5)
+        name_label.grid(row=3, column=0, padx=10, pady=5)
         name_entry = tk.Entry(tab_frame, textvariable=tab_name, name="name", bg=self.background_color, fg="white")
-        name_entry.grid(row=0, column=1, padx=10, pady=5)
+        name_entry.grid(row=3, column=1, padx=10, pady=5)
+
+
+
 
         # Input fields and roll buttons
         entries = {}
 
         for i, attribute in enumerate(self.attributes):
             label = tk.Label(tab_frame, text=attribute, bg=self.background_color, fg="white")
-            label.grid(row=i+1, column=0, padx=10, pady=5)
+            label.grid(row=i+4, column=0, padx=10, pady=5)
 
-            entry = tk.Entry(tab_frame, bg=self.background_color, fg="white")
-            entry.grid(row=i+1, column=1, padx=10, pady=5)
+            if attribute == "Constitution":
+                self.con_var = tk.StringVar(value="0")
+                entry = tk.Entry(tab_frame, textvariable=self.con_var, bg=self.background_color, fg="white")
+                self.con_var.trace_add("write", self.update_base_hp)
+            else:
+                entry = tk.Entry(tab_frame, bg=self.background_color, fg="white")
+            entry.grid(row=i+4, column=1, padx=10, pady=5)
             entries[attribute] = entry
 
             roll_button = tk.Button(tab_frame, text="Roll", command=lambda attr=attribute: self.roll_dice(attr, entries, tab_name.get()), bg=self.background_color, fg="white", borderwidth=0)
-            roll_button.grid(row=i+1, column=2, padx=10, pady=5)
+            roll_button.grid(row=i+4, column=2, padx=10, pady=5)
 
             # Tooltip setup for the label
             def get_tooltip_text(entry=entry):
@@ -116,7 +139,7 @@ class DiceRollerApp:
 
         # Output text box
         output_text = tk.Text(tab_frame, height=10, width=50, bg="white", fg="black", borderwidth=0)
-        output_text.grid(row=len(self.attributes)+1, column=0, columnspan=3, padx=10, pady=10)
+        output_text.grid(row=len(self.attributes)+4, column=0, columnspan=3, padx=10, pady=10)
 
         # Add the new tab to the left of the Log tab
         index = self.notebook.index("end") - 2
@@ -141,6 +164,24 @@ class DiceRollerApp:
             "1/20": max(math.floor(value / 20), 1)
         }
         return "\n".join(f"{k}: {v}" for k, v in values.items())
+    
+    def take_damage(self):
+        try:
+            dmg = int(simpledialog.askstring("Take Damage", "Enter damage amount:"))
+            current = int(self.current_hp_var.get())
+            new_hp = max(0, current - dmg)
+            self.current_hp_var.set(str(new_hp))
+        except (TypeError, ValueError):
+            pass  # user canceled or entered invalid input
+
+    def update_base_hp(self, var,index,mode):
+        try:
+            con = int(self.con_var.get())
+            base = 20 + max(math.floor(int(con) / 5), 1)
+            self.base_hp_var.set(str(base))
+        except ValueError:
+            self.base_hp_var.set("20")  # fallback default
+        self.current_hp_var.set(int(self.base_hp_var.get()) + int(self.add_hp_var.get()))
 
     def roll_dice(self, attribute, entries, tab_name):
         try:
@@ -184,8 +225,8 @@ class DiceRollerApp:
         for child in frame.winfo_children():
             if isinstance(child, tk.Entry):
                 row = int(child.grid_info()['row'])
-                if row > 0:
-                    attribute = self.attributes[row-1]
+                if row > 2:
+                    attribute = self.attributes[row-4]
                     entries[attribute] = child
         return entries
 
