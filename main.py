@@ -167,7 +167,7 @@ class DiceRollerApp:
     
     def take_damage(self):
         try:
-            dmg = int(simpledialog.askstring("Take Damage", "Enter damage amount:"))
+            dmg = int(simpledialog.askstring("Take Damage", "Enter damage amount:", parent=self.root))
             current = int(self.current_hp_var.get())
             new_hp = max(0, current - dmg)
             self.current_hp_var.set(str(new_hp))
